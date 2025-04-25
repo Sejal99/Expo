@@ -1,74 +1,150 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import { useEffect } from "react";
+import { Text, View, StyleSheet, TouchableOpacity } from "react-native";
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from "react-native-gesture-handler";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+  withRepeat,
+  Easing,
+} from "react-native-reanimated";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+export default function AboutScreen() {
+  const scaleImage = useSharedValue(200);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const opacity = useSharedValue(1);
+  const rotate = useSharedValue(0);
+  const isMoved = useSharedValue(false);
+  const bounceY = useSharedValue(0);
+  const isPulsing = useSharedValue(false);
 
-export default function HomeScreen() {
+  const imageStyle = useAnimatedStyle(() => {
+    const pulseScale = isPulsing.value ? 1.1 : 1;
+
+    return {
+      width: withSpring(scaleImage.value),
+      height: withSpring(scaleImage.value),
+      opacity: opacity.value,
+      transform: [
+        { translateX: translateX.value },
+        { translateY: translateY.value },
+        { scale: pulseScale },
+        { rotate: `${rotate.value}deg` },
+      ],
+    };
+  });
+
+  const handlePulse = () => {
+    isPulsing.value = true;
+    scaleImage.value = withRepeat(withTiming(220, { duration: 300 }), 6, true);
+
+    setTimeout(() => {
+      isPulsing.value = false;
+      scaleImage.value = withTiming(200); // reset to default
+    }, 2000);
+  };
+
+  const doubleTap = Gesture.Tap()
+    .numberOfTaps(2)
+    .onStart(() => {
+      if (scaleImage.value !== 200 * 2) {
+        scaleImage.value = scaleImage.value * 2;
+      } else {
+        scaleImage.value = Math.round(scaleImage.value / 2);
+      }
+    });
+
+  const drag = Gesture.Pan().onChange((event) => {
+    translateX.value += event.changeX;
+    translateY.value += event.changeY;
+  });
+
+  const handleMove = () => {
+    if (isMoved.value) {
+      translateX.value = withTiming(0);
+    } else {
+      translateX.value = withTiming(300);
+    }
+    isMoved.value = !isMoved.value;
+  };
+
+  const handleFade = () => {
+    opacity.value = withTiming(opacity.value === 1 ? 0.3 : 1, {
+      duration: 500,
+    });
+  };
+
+  const handleRotate = () => {
+    rotate.value = withTiming(rotate.value + 360, {
+      duration: 1000,
+      easing: Easing.out(Easing.exp),
+    });
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <GestureHandlerRootView style={styles.container}>
+      <GestureDetector gesture={drag}>
+        <Animated.View style={{ top: -50 }}>
+          <GestureDetector gesture={doubleTap}>
+            <Animated.Image
+              source={{
+                uri: "https://i0.wp.com/picjumbo.com/wp-content/uploads/beautiful-fall-path-by-a-pond-free-image.jpg?w=600&quality=80",
+              }}
+              resizeMode="contain"
+              style={imageStyle}
+            />
+          </GestureDetector>
+        </Animated.View>
+      </GestureDetector>
+
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity style={styles.button} onPress={handleMove}>
+          <Text style={styles.buttonText}>Move</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.button} onPress={handleFade}>
+          <Text style={styles.buttonText}>Fade</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.button} onPress={handleRotate}>
+          <Text style={styles.buttonText}>Rotate</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.button} onPress={handlePulse}>
+          <Text style={styles.buttonText}>Pulse</Text>
+        </TouchableOpacity>
+      </View>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: "grey",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  buttonContainer: {
+    position: "absolute",
+    bottom: 100,
+    flexDirection: "row",
+    gap: 10,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  button: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: "white",
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: "black",
+    fontWeight: "bold",
   },
 });

@@ -1,109 +1,178 @@
-import { StyleSheet, Image, Platform } from 'react-native';
-
-import { Collapsible } from '@/components/Collapsible';
-import { ExternalLink } from '@/components/ExternalLink';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+import {
+  StyleSheet,
+  Image,
+  View,
+  Platform,
+  TouchableOpacity,
+  Text,
+  Button,
+} from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import { useRef, useState } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import * as MediaLibrary from "expo-media-library";
+import { captureRef } from "react-native-view-shot";
+import CircleButton from "../components/CircleButton";
+import EmojiPicker from "../components/EmojiPicker";
+import IconButton from "../components/IconButton";
+import { ImageSource } from "expo-image";
+import EmojiSticker from "../components/EmojiSticker";
+import EmojiList from "../components/EmojiList";
+import domtoimage from "dom-to-image";
+import { CameraType, CameraView, useCameraPermissions } from "expo-camera";
 
 export default function TabTwoScreen() {
+  const [selectedImage, setSelectedImage] = useState<string | undefined>(
+    undefined
+  );
+  const [status, requestPermission] = MediaLibrary.usePermissions();
+  const imageRef = useRef<View>(null);
+  const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
+  const [pickedEmoji, setPickedEmoji] = useState<ImageSource | undefined>(
+    undefined
+  );
+  const [facing, setFacing] = useState<CameraType>("back");
+  const [permission] = useCameraPermissions();
+  const [showCamera, setShowCamera] = useState(false);
+
+  function toggleCameraFacing() {
+    setFacing((current) => (current === "back" ? "front" : "back"));
+  }
+
+  const pickImageAsync = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setSelectedImage(result.assets[0].uri);
+      console.log(result);
+    } else {
+      alert("You did not select any image.");
+    }
+  };
+
+  if (status === null) {
+    requestPermission();
+  }
+
+  const onSaveImageAsync = async () => {
+    if (Platform.OS !== "web") {
+      try {
+        const localUri = await captureRef(imageRef, {
+          height: 440,
+          quality: 1,
+        });
+
+        await MediaLibrary.saveToLibraryAsync(localUri);
+        if (localUri) {
+          alert("Saved!");
+        }
+      } catch (e) {
+        console.log(e);
+      }
+    } else {
+      try {
+        const dataUrl = await domtoimage.toJpeg(imageRef.current, {
+          quality: 0.95,
+          width: 320,
+          height: 440,
+        });
+
+        let link = document.createElement("a");
+        link.download = "sticker-smash.jpeg";
+        link.href = dataUrl;
+        link.click();
+      } catch (e) {
+        console.log(e);
+      }
+    }
+  };
+
+  const onAddSticker = () => {
+    setIsModalVisible(true);
+  };
+
+  const onModalClose = () => {
+    setIsModalVisible(false);
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Explore</ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image source={require('@/assets/images/react-logo.png')} style={{ alignSelf: 'center' }} />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Custom fonts">
-        <ThemedText>
-          Open <ThemedText type="defaultSemiBold">app/_layout.tsx</ThemedText> to see how to load{' '}
-          <ThemedText style={{ fontFamily: 'SpaceMono' }}>
-            custom fonts such as this one.
-          </ThemedText>
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/versions/latest/sdk/font">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user's current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful <ThemedText type="defaultSemiBold">react-native-reanimated</ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    <View style={styles.container}>
+      <View style={styles.imageContainer}>
+        <View ref={imageRef} collapsable={false}>
+          {selectedImage ? (
+            <Image source={{ uri: selectedImage }} style={styles.image} />
+          ) : (
+            <Image
+              source={{
+                uri: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f",
+              }}
+              style={styles.image}
+            />
+          )}
+          {pickedEmoji && (
+            <EmojiSticker imageSize={40} stickerSource={pickedEmoji} />
+          )}
+        </View>
+      </View>
+      <View style={styles.buttonContainer}>
+        <IconButton icon="image" label="Gallery" onPress={pickImageAsync} />
+        <CircleButton onPress={onAddSticker} />
+        <IconButton icon="save-alt" label="Save" onPress={onSaveImageAsync} />
+      </View>
+      <EmojiPicker isVisible={isModalVisible} onClose={onModalClose}>
+        <EmojiList onSelect={setPickedEmoji} onCloseModal={onModalClose} />
+      </EmojiPicker>
+
+      {/* <CameraView style={styles.camera} facing={facing}>
+        <TouchableOpacity style={styles.button} onPress={toggleCameraFacing}>
+          <Text style={{}}>Flip Camera</Text>
+        </TouchableOpacity>
+      </CameraView> */}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
+    backgroundColor: "grey",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
+  camera: {
+    flex: 1,
+    width: "50%",
+  },
+  button: {
+    backgroundColor: "white",
+    padding: 10,
+    borderRadius: 10,
+    marginTop: 20,
+  },
+  button1: {
+    backgroundColor: "white",
+    padding: 10,
+    borderRadius: 10,
+    marginTop: 20,
+  },
+  imageContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  image: {
+    width: 300,
+    height: 500,
+    resizeMode: "cover",
+    borderRadius: 20,
+  },
+  buttonContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+
+    marginVertical: 20,
   },
 });
